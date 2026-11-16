@@ -1,5 +1,9 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Visor de Consultas HospitalDB</title>
-<meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;700&display=swap">
@@ -447,12 +451,14 @@ table.ghost tr.gone td { text-decoration: line-through 3px var(--strike); color:
 
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation-duration: 1ms !important; animation-delay: 0ms !important; transition-duration: 1ms !important; scroll-behavior: auto !important; }
-  .cursor { animation: none; }
-}
+/* Las animaciones están activas por defecto (es una herramienta de exposición), aunque el sistema
+   tenga "reducir animaciones". Se apagan a mano con la tecla A y la elección se recuerda. */
+html.no-motion *, html.no-motion *::before, html.no-motion *::after { animation-duration: 1ms !important; animation-delay: 0ms !important; transition-duration: 1ms !important; scroll-behavior: auto !important; }
+html.no-motion .cursor { animation: none; }
 </style>
 
+</head>
+<body>
 <div id="viewport">
   <div id="stage" role="application" aria-label="Visor de consultas SQL">
     <header class="top" id="top" hidden>
@@ -539,6 +545,7 @@ table.ghost tr.gone td { text-decoration: line-through 3px var(--strike); color:
             <dt><kbd>T</kbd></dt><dd>Tema claro u oscuro</dd>
             <dt><kbd>N</kbd></dt><dd>Notas del expositor</dd>
             <dt><kbd>+</kbd> <kbd>−</kbd></dt><dd>Más o menos velocidad</dd>
+            <dt><kbd>A</kbd></dt><dd>Activar o desactivar animaciones</dd>
           </dl></section>
           <section><h3>Señalar</h3><dl>
             <dt><kbd>L</kbd></dt><dd>Puntero láser con estela</dd>
@@ -19120,7 +19127,15 @@ const CONSULTAS = [
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const NF = new Intl.NumberFormat("es-PE", { maximumFractionDigits: 2 });
   const NFC = new Intl.NumberFormat("es-PE", { notation: "compact", maximumFractionDigits: 1 });
-  const reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let reduced = false;
+  try { reduced = localStorage.getItem("visor-mov") === "off"; } catch (e) {}
+  document.documentElement.classList.toggle("no-motion", reduced);
+  function toggleMotion() {
+    reduced = !reduced;
+    document.documentElement.classList.toggle("no-motion", reduced);
+    try { localStorage.setItem("visor-mov", reduced ? "off" : "on"); } catch (e) {}
+    toast(reduced ? "Animaciones desactivadas. Pulsa A para activarlas." : "Animaciones activadas.");
+  }
   const CPS = 45;            // caracteres por segundo a 1x
   const minus = (s) => s.replace(/^-/, "−");
   const ICON = {
@@ -19833,6 +19848,9 @@ const CONSULTAS = [
       openTable(`${q.id} · Resultado`, r.columnas, r.filas, `Se muestran ${r.filas.length} de ${fmtCell(tot, "n").t} filas incluidas en los datos de la consulta.`);
     });
     $("bNextQ").addEventListener("click", () => (nx ? enterQuery(S.qi + 1) : goSummary()));
+    // Si el texto del hallazgo es largo y la tarjeta "Siguiente" no entra completa, se oculta (→ sigue funcionando).
+    const cl = box.querySelector(".close-left");
+    if (cl && cl.scrollHeight > cl.clientHeight + 2) $("bNextQ").hidden = true;
     // Cifra: cuenta ascendente hasta el valor exacto del bloque
     const target = Number(h.cifra), big = $("bigNum");
     if (Number.isFinite(target) && !reduced) {
@@ -20252,6 +20270,7 @@ const CONSULTAS = [
       else if (k === "z" || k === "Z") setTool("zoom");
       else if (k === "c" || k === "C") clearInk();
       else if (k === "?" || k === "h" || k === "H") openHelp();
+      else if (k === "a" || k === "A") toggleMotion();
       else if (k === "+" || k === "=") cycleSpeed(1);
       else if (k === "-" || k === "_") cycleSpeed(-1);
       else if (k === "Escape") {
@@ -20270,3 +20289,6 @@ const CONSULTAS = [
   }
 })();
 </script>
+
+</body>
+</html>
